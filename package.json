@@ -12,7 +12,9 @@
     "build": "vite build",
     "start": "bun server/index.ts",
     "typecheck": "tsc --noEmit",
-    "check": "biome check .",
+    "check": "bun run check:code && bun run check:docs",
+    "check:code": "biome check .",
+    "check:docs": "markdownlint-cli2 \"README.md\"",
     "check:fix": "biome check --write .",
     "format": "biome format --write .",
     "lint": "biome lint .",
@@ -31,6 +33,7 @@
     "@types/three": "0.170.0",
     "drizzle-kit": "0.31.11",
     "knip": "6.44.1",
+    "markdownlint-cli2": "0.24.0",
     "typescript": "7.0.2",
     "vite": "8.3.5"
   }

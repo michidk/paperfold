@@ -13,7 +13,8 @@
       "!analysis",
       "!**/*.md",
       "!**/*.yaml",
-      "!**/*.yml"
+      "!**/*.yml",
+      "!.markdownlint.jsonc"
     ]
   },
   "formatter": {

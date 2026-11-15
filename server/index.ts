@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ServerWebSocket } from 'bun'
 import { DT, Flight, type Input } from '../shared/flight'
@@ -26,7 +26,8 @@ const TICK_MS = 50,
 // of real time, and runs on its own once the browser falls more than STALL_STEPS behind.
 const LEAD_STEPS = 30,
   STALL_STEPS = 1500,
-  MAX_QUEUED_INPUTS = 2000
+  MAX_QUEUED_INPUTS = 2000,
+  THROW_GAP_MS = 1500 // at most one throw per connection this often: each can store a few MB of paint
 
 type Landed = Plane
 // A plane in the air: the official simulation, and the inputs its thrower sent ahead of it.
@@ -59,6 +60,7 @@ interface SocketData {
   pid: string
   flight: LiveFlight | null
   status: Status
+  lastThrow: number // performance.now() of this connection's last throw
 }
 type Socket = ServerWebSocket<SocketData>
 // A message from a browser: parsed JSON, so every field is checked before use.
@@ -135,7 +137,9 @@ const pub = (f: LiveFlight) => ({
 const send = (msg: object) => server.publish('all', JSON.stringify(msg))
 
 function throwPlane(ws: Socket, msg: ClientMessage) {
-  if (ws.data.flight) return
+  const now = performance.now()
+  if (ws.data.flight || now - ws.data.lastThrow < THROW_GAP_MS) return
+  ws.data.lastThrow = now
   const id = nextId++
   const design = sanitizeDesign(msg.design)
   let paint = false
@@ -192,6 +196,8 @@ function land(f: LiveFlight, surfaceY: number, where: string) {
     at: Date.now(),
   }
   const ignored = rec.dist < MIN_DIST
+  // Short throws don't stay in the city, so neither does their paint.
+  if (ignored && f.paint) rmSync(join(PAINT, `${f.id}.png`), { force: true })
   if (!ignored) {
     landed.push(rec)
     recordBest(rec)
@@ -263,12 +269,19 @@ const server = Bun.serve({
   port: Number(process.env.PORT ?? 3000),
   async fetch(req, srv) {
     const path = new URL(req.url).pathname
+    if (path === '/healthz')
+      return Response.json({
+        ok: true,
+        players: sockets.size,
+        flights: flights.size,
+      })
     if (path === '/ws') {
       const data: SocketData = {
         name: 'Anonymous',
         pid: crypto.randomUUID().replace(/-/g, ''),
         flight: null,
         status: 'arriving',
+        lastThrow: 0,
       }
       return srv.upgrade(req, { data })
         ? undefined
@@ -296,6 +309,8 @@ const server = Bun.serve({
         'cache-control': path.startsWith('/assets/')
           ? 'public, max-age=31536000, immutable'
           : 'no-cache',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'strict-origin-when-cross-origin',
       },
     })
   },
@@ -360,4 +375,14 @@ const server = Bun.serve({
     },
   },
 })
+if (!existsSync(join(DIST, 'index.html')))
+  console.warn('paperfold: no client in dist/, run `bun run build` first')
 console.log(`paperfold on :${server.port}`)
+
+// Containers stop with SIGTERM: finish the database writes before going.
+for (const signal of ['SIGTERM', 'SIGINT'] as const)
+  process.on(signal, () => {
+    server.stop()
+    db.close()
+    process.exit(0)
+  })
