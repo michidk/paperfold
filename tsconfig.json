@@ -1,0 +1,26 @@
+{
+  "include": ["client", "server", "shared", "*.config.ts"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["bun", "vite/client"],
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    /* Linting */
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    // Off unlike roastbook: the physics indexes fixed-size vectors and vertex arrays everywhere,
+    // where every read would otherwise need a check that can never fail.
+    "noUncheckedIndexedAccess": false,
+    "noUncheckedSideEffectImports": true
+  }
+}

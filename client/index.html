@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paperfold</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <div id="start" class="card center">
+    <h1>Paperfold <span id="netBadge" class="netBadge" hidden></span></h1>
+    <p>Fold a paper plane, throw it off the tower, and leave it in the city for everyone to find.</p>
+    <label class="name" for="name">Pilot name</label>
+    <div class="nameRow">
+      <input id="name" maxlength="20" autocomplete="nickname">
+      <button id="reroll" type="button" aria-label="Pick another random name" title="Pick another random name">🎲</button>
+    </div>
+    <button type="button" id="go" class="primary">Start folding</button>
+  </div>
+
+  <main id="workshop" hidden>
+    <header class="wsHeader">
+      <h1>Paperfold <span>workshop</span></h1>
+      <p class="hint" id="toolHint">Draw a line along the paper to fold it. Click a fold to set its angle, drag it to move it. The fold at the wing root sets the wing V.</p>
+    </header>
+
+    <section class="wsLeft" aria-label="Tools">
+      <div class="card wsTools">
+        <div class="tabs" role="tablist">
+          <button type="button" data-tool="fold" class="on">Fold &amp; cut</button>
+          <button type="button" data-tool="paint">Paint</button>
+        </div>
+        <fieldset class="tabs" id="drawKind" aria-label="What a line on the paper makes"><button type="button" data-kind="fold" class="on">Fold</button><button type="button" data-kind="flap">Cut</button></fieldset>
+        <div id="paintTools" hidden>
+          <fieldset class="tabs" id="paintSide" aria-label="Side of the sheet to paint"><button type="button" data-side="front" class="on">Front</button><button type="button" data-side="back">Back</button><button type="button" data-side="both" title="Paint front and back at once">Both</button></fieldset>
+          <button type="button" id="mirror" class="small mirrorPaint" aria-pressed="false" title="Paint both wings at once, mirrored across the centre fold">⇋ Mirror</button>
+          <div id="swatches"></div>
+          <label class="slider"><span>Brush</span><input type="range" id="brush" min="2" max="40" value="10"></label>
+          <button type="button" id="clearPaint" class="small">Clear paint</button>
+        </div>
+        <div class="foldBar"><b id="foldCount"></b><button type="button" id="clearFolds" class="small">Clear folds</button><button type="button" id="resetDesign" class="small" title="Back to the default plane on blank paper">Reset</button><button type="button" id="randomDesign" class="small" title="Fold and paint a random plane">Random</button></div>
+        <div id="stats"></div>
+      </div>
+      <div class="card mineCard" id="mineCard">
+        <h3>Your planes</h3>
+        <ol id="myPlanes" class="mineList"></ol>
+        <details id="archivedPlanes" hidden>
+          <summary>Archived (<span id="archivedCount">0</span>)</summary>
+          <ol id="myArchived" class="mineList"></ol>
+        </details>
+      </div>
+    </section>
+
+    <section class="wsPaper" aria-label="Paper sheet">
+      <button type="button" id="mirrorFolds" class="small mirrorToggle on" aria-pressed="true" title="Mirror folds onto both halves. Turn off to fold each half its own way.">⇋ Mirrored</button>
+      <div id="sheet" data-tool="fold" data-face="front">
+        <canvas id="paint" width="1680" height="1188"></canvas>
+        <svg id="folds" viewBox="0 0 210 297" role="img" aria-label="Folds and cuts on the sheet"></svg>
+        <div id="foldPop" class="pop" hidden>
+          <b id="foldKind" class="popTitle"></b>
+          <label class="slider"><span id="foldAngleName">Angle</span><output id="foldAngleOut"></output>
+            <input type="range" id="foldAngle" min="-180" max="180" step="1" aria-label="Fold angle: left folds down, right folds up"></label>
+          <label class="slider" id="foldAngleLRow" hidden><span>Left half</span><output id="foldAngleLOut"></output>
+            <input type="range" id="foldAngleL" min="-180" max="180" step="1" aria-label="Left half fold angle: left folds down, right folds up"></label>
+          <div class="ends" aria-hidden="true"><span>↓ down</span><span>0</span><span>up ↑</span></div>
+          <label class="check" id="foldSameRow"><input type="checkbox" id="foldSame" checked> Symmetric</label>
+          <button type="button" id="foldDelete" class="small danger">Delete fold</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="wsSide" aria-label="Preview, launch and live view">
+      <div class="card previewCard">
+        <canvas id="deskView" aria-label="3D preview of your plane, drag to turn it"></canvas>
+        <p class="hint">Drag to turn it</p>
+      </div>
+      <label class="check chip"><input type="checkbox" data-invert-pitch> Invert vertical steering</label>
+      <button type="button" id="toRoof" class="primary">Throw it ✈</button>
+      <button type="button" id="toLab">Test in the lab</button>
+      <div class="card liveCard">
+        <div class="liveHead">
+          <h3 class="mp"><span class="dot" aria-hidden="true"></span>Live</h3>
+          <button type="button" id="followNext" class="small mp" hidden>Next ▸</button>
+        </div>
+        <div id="followView"><p id="followLabel"></p></div>
+        <button type="button" id="watchLive" class="small cityBtn">Watch full screen</button>
+        <button type="button" id="toCity" class="small cityBtn">Explore the city</button>
+        <h3 class="mp">Playing now · <span class="playingCount">0</span></h3>
+        <ol class="live playingList mp"></ol>
+      </div>
+    </section>
+  </main>
+
+  <div id="aim" class="hud bottom" hidden>
+    <p id="aimText">Pick a direction: drag, A / D or ← / →. Click or Space to lock it.</p>
+    <div class="meter" id="dirRow"><span>Direction</span><div class="dial" aria-hidden="true"><i id="dirNeedle"></i></div><b id="dirVal"></b></div>
+    <div class="meter" id="powerRow"><span>Power</span><div><i id="powerBar"></i></div></div>
+    <div class="meter" id="angleRow"><span>Angle</span><div><i id="angleBar"></i></div><b id="angleVal"></b></div>
+    <button type="button" id="backWorkshop" class="small">Back to workshop</button>
+  </div>
+
+  <div id="flightHud" class="hud top" hidden>
+    <div class="readout"><span id="hudSpeed"></span><span id="hudAlt"></span><span id="hudDist"></span><span id="hudTime"></span></div>
+    <div id="thermal" hidden>Updraft!</div>
+    <div id="windy" hidden>Windy!</div>
+    <p class="hint touchOnly">Drag anywhere to steer: down pulls up, sideways banks</p>
+    <p class="hint" id="steerHint">S/↓ pull up · W/↑ dive · A/D or ←/→ bank</p>
+    <label class="check"><input type="checkbox" data-invert-pitch> Invert vertical steering</label>
+  </div>
+
+  <div id="replayHud" class="hud top" hidden>
+    <div class="readout"><b>Replay</b><span id="replayTime"></span></div>
+    <p class="hint">Hold Shift to speed it up</p>
+    <button type="button" id="skipReplay" class="small">Back to the results</button>
+  </div>
+
+  <aside id="landed" class="card results" hidden>
+    <h2 id="landedTitle">Landed</h2>
+    <p id="landedText"></p>
+    <h3>Leaderboard</h3>
+    <ol id="rankList" class="planeList"></ol>
+    <h3>Nearby</h3>
+    <ol id="nearList" class="planeList"></ol>
+    <button type="button" id="watchReplay" class="replayBtn">▶ Watch the replay</button>
+    <div class="row">
+      <button type="button" id="retry" class="primary">Throw it again ✈</button>
+      <button type="button" id="again">Fold another</button>
+      <button type="button" id="explore">Explore the city</button>
+    </div>
+  </aside>
+  <aside id="inspect" class="card inspect" hidden>
+    <div id="inspectView"></div>
+    <p id="inspectCaption"></p>
+    <button type="button" id="copyDesign" class="small">Fold a copy of this plane</button>
+  </aside>
+
+  <div id="exploreHud" class="hud top" hidden>
+    <p class="hint">Drag to look · WASD move · Q/E down/up · Shift faster</p>
+    <p class="hint touchOnly">Left side: drag to move · right side: drag to look</p>
+    <button type="button" id="exploreBack" class="small">Back to workshop</button>
+  </div>
+
+  <div id="spectateHud" class="hud top" hidden>
+    <p class="spectating">Watching <b id="spectateName"></b></p>
+    <div class="readout"><span id="spectateSpeed"></span><span id="spectateAlt"></span><span id="spectateDist"></span></div>
+    <p class="hint">Click someone flying in the list to watch them instead</p>
+    <div class="row">
+      <button type="button" id="spectateNext" class="small" hidden>Next flight ▸</button>
+      <button type="button" id="stopWatching" class="small">Stop watching</button>
+    </div>
+  </div>
+
+  <aside id="labHud" class="card labHud" hidden>
+    <div class="labHead">
+      <h2>Lab</h2>
+      <button type="button" id="labBack" class="small">Back to workshop</button>
+    </div>
+    <p class="hint">Still air, no steering, launched 10 m up. The same throw always flies the same way, so you can compare designs.</p>
+    <h3>Your plane</h3>
+    <dl id="labFacts" class="labGrid"></dl>
+    <h3>Throw</h3>
+    <label class="labRow" for="labSpeed">Speed <input type="range" id="labSpeed" min="3" max="14" step="0.5" value="7"><output id="labSpeedOut"></output></label>
+    <label class="labRow" for="labPitch">Angle <input type="range" id="labPitch" min="-20" max="35" step="1" value="0"><output id="labPitchOut"></output></label>
+    <div class="labActions">
+      <button type="button" id="labLaunch" class="primary">Launch</button>
+      <button type="button" id="labStandard">Standard throw</button>
+    </div>
+    <p id="labLive" class="labLive"></p>
+    <h3>Runs</h3>
+    <ol id="labRuns" class="labRuns"></ol>
+  </aside>
+  <aside id="labData" class="card labHud labData" hidden>
+    <p class="hint">Drag to orbit the plane · scroll to zoom</p>
+    <h3>In flight</h3>
+    <dl id="labTelemetry" class="labGrid"></dl>
+    <label class="check"><input type="checkbox" id="labForces" checked> Show forces: <span class="key lift">lift</span> <span class="key drag">drag</span> <span class="key weight">weight</span></label>
+    <h3>Flight profile</h3>
+    <canvas id="labProfile" aria-label="Height over distance for the recent runs"></canvas>
+    <p class="hint" id="labProfileScale"></p>
+  </aside>
+
+  <aside id="board" class="panel right" hidden>
+    <h3 class="mp">Playing now · <span class="playingCount">0</span></h3>
+    <ol class="live playingList mp"></ol>
+    <h3>Farthest flights</h3>
+    <ol id="top"></ol>
+    <h3>Just landed</h3>
+    <ol id="recent"></ol>
+    <p class="hint">Click a plane to fly there.</p>
+  </aside>
+
+  <div id="stick" hidden aria-hidden="true"><i id="stickKnob"></i></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,1501 @@
+:root {
+  --ink: #2b2b3a;
+  --paper: #fffdf6;
+  --accent: #ff6b6b;
+  --muted: #6b6b80;
+  --line: #2b2b3a22;
+  --down: #3d7bd9;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+  /* Slim ink scrollbars without arrow buttons, in place of the browser's grey ones. */
+  scrollbar-width: thin;
+  scrollbar-color: #2b2b3a66 transparent;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #9fd8ff;
+  color: var(--ink);
+  font:
+    15px / 1.35 "Baloo 2",
+    system-ui,
+    sans-serif;
+}
+#gl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+button {
+  touch-action: manipulation;
+} /* no double-tap zoom on buttons */
+.touchOnly {
+  display: none;
+}
+@media (pointer: coarse) {
+  .touchOnly {
+    display: block;
+  }
+  #flightHud .hint:not(.touchOnly),
+  #exploreHud .hint:not(.touchOnly) {
+    display: none;
+  } /* keyboard hints */
+}
+/* Virtual stick shown under a steering or moving finger. */
+#stick {
+  position: fixed;
+  width: 140px;
+  height: 140px;
+  margin: -70px 0 0 -70px;
+  border-radius: 50%;
+  border: 2px solid #fffdf6aa;
+  background: #2b2b3a22;
+  pointer-events: none;
+  z-index: 5;
+}
+#stick i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: #fffdf6;
+  border: 2px solid var(--ink);
+}
+[hidden] {
+  display: none !important;
+}
+h1,
+h2,
+h3 {
+  margin: 0 0 8px;
+  line-height: 1.1;
+}
+h1 {
+  font-size: 44px;
+  font-weight: 800;
+}
+h2 {
+  font-size: 24px;
+}
+h3 {
+  font-size: 15px;
+  margin-top: 8px;
+}
+button {
+  font: inherit;
+  font-weight: 700;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+button.primary {
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+  font-size: 18px;
+}
+button.small {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  --track: #e6e1d4;
+  --fill: var(--accent);
+  --from: 0%;
+  --to: 50%;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--track) var(--from),
+    var(--fill) var(--from),
+    var(--fill) var(--to),
+    var(--track) var(--to)
+  );
+  border: 1.5px solid var(--ink);
+}
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--track) var(--from),
+    var(--fill) var(--from),
+    var(--fill) var(--to),
+    var(--track) var(--to)
+  );
+  border: 1.5px solid var(--ink);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8.5px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.slider {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+.slider input {
+  grid-column: 1 / -1;
+}
+.slider output {
+  font-weight: 800;
+  color: var(--accent);
+}
+.card,
+.panel {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 0 6px 0 var(--ink);
+}
+.center {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 24px;
+  width: min(420px, calc(100% - 32px));
+  text-align: center;
+}
+.center .row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.center .row button {
+  flex: 1;
+  width: auto;
+}
+.name {
+  display: block;
+  margin: 16px 0 4px;
+  text-align: left;
+  font-weight: 700;
+}
+.nameRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.nameRow input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+.nameRow button {
+  padding: 4px 12px;
+  font-size: 18px;
+  box-shadow: 0 2px 0 var(--ink);
+}
+.panel {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 330px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  padding: 14px;
+}
+.panel.right {
+  left: auto;
+  right: 12px;
+  width: 220px;
+  font-size: 14px;
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  min-width: 0; /* fieldset.tabs: no browser fieldset box */
+}
+.tabs button {
+  flex: 1;
+  padding: 4px;
+  box-shadow: none;
+}
+.tabs button.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+#sheet {
+  position: relative;
+  aspect-ratio: 210 / 297;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 0 #0002,
+    0 14px 30px #0005;
+}
+#sheet canvas,
+#sheet svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+/* The paint canvas holds front|back; show one half. The back is seen from behind, so mirrored. */
+#sheet canvas {
+  object-fit: cover;
+  object-position: left;
+}
+#sheet[data-face="back"] canvas {
+  object-position: right;
+  transform: scaleX(-1);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* Checkboxes drawn in the game's ink-and-paper style. */
+.check input[type="checkbox"] {
+  appearance: none;
+  flex: none;
+  display: grid;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.check input[type="checkbox"]::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border: solid var(--paper);
+  border-width: 0 0 2.5px 2.5px;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.1s;
+}
+.check input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+.check input[type="checkbox"]:checked::after {
+  transform: rotate(-45deg) scale(1);
+}
+.check input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--down);
+  outline-offset: 2px;
+}
+/* A setting on its own on the desk, styled like the cards around it. */
+.check.chip {
+  margin: 0;
+  padding: 8px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+.wsPaper {
+  position: relative;
+}
+.mirrorToggle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+.mirrorToggle.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+.mirrorPaint {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.mirrorPaint.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+#sheet[data-tool="fold"] svg {
+  pointer-events: auto;
+}
+#sheet[data-tool="paint"] svg {
+  pointer-events: none;
+  opacity: 0.45;
+}
+#sheet[data-tool="paint"] canvas {
+  cursor: crosshair;
+}
+svg .fold {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 2.5;
+  fill: none;
+  pointer-events: none;
+}
+svg .fold.down {
+  stroke: var(--down);
+  stroke-dasharray: 6 2 1 2;
+}
+svg .handle.down {
+  fill: var(--down);
+}
+svg .fold.sel {
+  filter: drop-shadow(0 0 1.5px #2b2b3a99);
+}
+svg .fold.inactive {
+  stroke: #999;
+  opacity: 0.6;
+}
+svg .draft.ok {
+  stroke: #2e9e5b;
+  opacity: 1;
+}
+svg .draft.bad {
+  stroke: #e53935;
+  opacity: 1;
+  animation: blink 0.6s step-end infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+svg .base {
+  stroke: var(--ink);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 2;
+  opacity: 0.55;
+}
+svg .hit {
+  stroke: transparent;
+  stroke-width: 9;
+  cursor: move;
+}
+svg .handle.end {
+  fill: #fff;
+  stroke: var(--ink);
+  stroke-width: 0.9;
+}
+#sheet[data-tool="fold"] svg {
+  cursor: crosshair;
+}
+svg .midline {
+  stroke: var(--ink);
+  stroke-width: 0.6;
+  stroke-dasharray: 2 2;
+}
+svg .flap {
+  fill: #2b2b3a18;
+}
+svg .handle {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 1;
+  pointer-events: none;
+}
+svg .grab {
+  fill: transparent;
+  cursor: grab;
+}
+svg text {
+  font:
+    700 7px "Baloo 2",
+    sans-serif;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 6px 0;
+}
+#paintTools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 6px 0;
+}
+#swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+#swatches button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+#swatches button.on {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+#swatches .custom {
+  flex: none; /* a swatch, not a stretching #paintTools label */
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  background: conic-gradient(
+    #ff6b6b,
+    #ffd166,
+    #7fc8a9,
+    #8ecae6,
+    #cdb4db,
+    #ff6b6b
+  );
+  border: 2px solid var(--ink);
+}
+#swatches .custom.on {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+#swatches .custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+#paintTools label {
+  flex: 1;
+  font-size: 13px;
+}
+#stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+  font-size: 13px;
+  margin: 8px 0 12px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #2b2b3a0d;
+}
+#stats .warn {
+  grid-column: 1 / -1;
+  color: #c0392b;
+  font-weight: 700;
+}
+.hud {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 10px 16px;
+  text-align: center;
+  width: max-content;
+  max-width: calc(100% - 32px);
+}
+.hud.bottom {
+  bottom: 16px;
+  width: min(460px, calc(100% - 32px));
+}
+.hud.top {
+  top: 12px;
+}
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  font-weight: 700;
+}
+.meter span {
+  text-align: left;
+}
+.meter div {
+  flex: 1;
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #7fc8a9, #ffd166, #ff6b6b);
+}
+.meter b {
+  width: 44px;
+  text-align: right;
+}
+.meter span {
+  width: 72px;
+}
+/* The step to lock now stands out; the others wait or are done. */
+.meter {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.meter.active {
+  opacity: 1;
+}
+.meter div.dial {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  margin-right: auto;
+  background: var(--paper);
+}
+.meter .dial i {
+  position: absolute;
+  left: calc(50% - 2px);
+  top: 3px;
+  width: 4px;
+  height: calc(50% - 3px);
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: 50% 100%;
+}
+.readout {
+  display: flex;
+  gap: 18px;
+  font-size: 18px;
+  font-weight: 800;
+  justify-content: center;
+}
+#thermal {
+  color: #e67e22;
+  font-weight: 800;
+}
+#windy {
+  color: #3d5a80;
+  font-weight: 800;
+}
+#board ol {
+  margin: 0;
+  padding-left: 20px;
+}
+#board li {
+  cursor: pointer;
+  padding: 1px 0;
+}
+#board li:hover {
+  color: var(--accent);
+}
+@media (max-width: 720px) {
+  .panel {
+    width: calc(100% - 24px);
+    max-height: 55%;
+  }
+  .panel.right {
+    display: none;
+  }
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pop {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, 14px);
+  width: 190px;
+  padding: 8px 10px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+.pop.above {
+  transform: translate(-50%, calc(-100% - 14px));
+}
+.pop .slider {
+  margin: 6px 0;
+}
+.pop .danger {
+  width: 100%;
+  color: #c0392b;
+  box-shadow: none;
+}
+.ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin: -2px 2px 6px;
+}
+#foldAngleOut.up {
+  color: var(--accent);
+}
+#foldAngleOut.down {
+  color: var(--down);
+}
+.foldBar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 13px;
+}
+.foldBar b {
+  flex: 1;
+}
+svg .zone {
+  fill: #ffd16633;
+}
+svg .cut {
+  stroke: var(--ink);
+  stroke-width: 1.3;
+}
+svg rect.hit {
+  fill: transparent;
+  stroke: none;
+  cursor: move;
+}
+#toolHint.warn {
+  color: #c0392b;
+  font-weight: 700;
+}
+.popTitle {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.mineList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.mineList li {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+.mineList .load {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 6px 8px;
+  box-shadow: 0 2px 0 var(--ink);
+  font-weight: 500;
+}
+.mineList .load:hover {
+  background: #fff3e8;
+}
+.mineList .load > span:last-child {
+  min-width: 0;
+}
+.mineList b {
+  font-size: 15px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mineList small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mineList .icon {
+  flex: none;
+  width: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  box-shadow: none;
+  border-width: 1.5px;
+}
+.mineList .icon:hover {
+  background: #fff3e8;
+}
+.mineList .icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#archivedPlanes {
+  margin-top: 12px;
+}
+#archivedPlanes summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+#archivedPlanes .load {
+  opacity: 0.7;
+}
+.thumb {
+  flex: none;
+  width: 24px;
+  height: 34px;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  background: var(--paper);
+  overflow: hidden;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: left;
+} /* front face */
+#board ol.live {
+  list-style: none;
+  padding: 0;
+}
+#board ol.live li {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: default;
+}
+#board ol.live li:hover {
+  color: inherit;
+}
+#board ol.live li b {
+  font-weight: 800;
+}
+#board ol.live li.you {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ---------- workshop: its own page, the paper is the main content ---------- */
+#workshop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  gap: 16px;
+  padding: 14px 18px 18px;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "head head head" "left paper side";
+  background-color: #2f6b57; /* cutting mat */
+  background-image:
+    linear-gradient(#ffffff14 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff14 1px, transparent 1px);
+  background-size: 24px 24px;
+  user-select: none;
+  -webkit-user-select: none; /* dragging on the paper must never select text */
+}
+#workshop input,
+#workshop .nameRow input {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.wsHeader {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: #fff;
+}
+.wsHeader h1 {
+  font-size: 28px;
+  margin: 0;
+  white-space: nowrap;
+}
+.wsHeader h1 span {
+  font-weight: 500;
+  opacity: 0.75;
+}
+.wsHeader .hint {
+  flex: 1;
+  margin: 0;
+  color: #e6f2ec;
+  font-size: 14px;
+}
+.wsHeader #toolHint.warn {
+  color: #ffd0c8;
+}
+.card {
+  padding: 14px;
+}
+.wsLeft {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+.wsTools {
+  flex: none;
+}
+.wsPaper {
+  grid-area: paper;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.wsPaper #sheet {
+  height: min(100cqh, 100cqw * 297 / 210);
+}
+.wsSide {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.previewCard {
+  padding: 8px;
+}
+#deskView {
+  display: block;
+  width: 100%;
+  height: clamp(150px, 24vh, 230px);
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 40%, #fff, #efe8d8);
+  cursor: grab;
+  touch-action: none;
+}
+#deskView:active {
+  cursor: grabbing;
+}
+.previewCard .hint {
+  text-align: center;
+  margin: 4px 0 0;
+}
+.mineCard {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.mineCard h3 {
+  margin-top: 0;
+}
+@media (max-width: 900px) {
+  #workshop {
+    overflow-y: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: max-content;
+    align-content: start;
+    grid-template-areas: "head" "paper" "left" "side";
+    padding: 12px 16px;
+  }
+  .wsHeader {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .wsHeader h1 {
+    font-size: 24px;
+  }
+  .wsHeader .hint {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .wsPaper,
+  .wsSide,
+  .wsLeft {
+    min-height: auto;
+  }
+  .wsPaper {
+    container-type: normal;
+  }
+  .wsPaper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .mirrorToggle {
+    position: static;
+    align-self: flex-start;
+  }
+  .wsPaper #sheet {
+    width: 100%;
+    height: auto;
+  }
+  .mineCard {
+    overflow: visible;
+  }
+}
+.wsTools .foldBar {
+  flex-wrap: wrap;
+}
+.wsTools .foldBar b {
+  flex-basis: 100%;
+}
+#sheet svg {
+  overflow: visible;
+} /* handles on the paper edge stay grabbable */
+#deskView {
+  background: radial-gradient(circle at 50% 35%, #f6f1e4, #d9cfb8);
+}
+
+/* live panel: follow cam (the city renderer's canvas moves in here) + who is online */
+.liveCard {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.liveCard h3 {
+  margin: 10px 0 4px;
+}
+.liveHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.liveHead h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e74c3c;
+  box-shadow: 0 0 0 3px #e74c3c33;
+  animation: pulse 1.6s infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot,
+  svg .draft.bad {
+    animation: none;
+  }
+}
+#followView {
+  position: relative;
+  flex: none;
+  height: clamp(140px, 22vh, 210px);
+  margin-top: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #9fd8ff;
+  border: 2px solid var(--ink);
+}
+#followView #gl {
+  position: absolute;
+  inset: 0;
+}
+#followLabel {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #fffdf6e6;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.playingList li[data-flight] {
+  cursor: pointer;
+}
+.playingList li[data-flight]:hover {
+  color: var(--accent);
+}
+.playingList li.following {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .liveCard {
+    overflow: visible;
+  }
+}
+ol.live {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+}
+ol.live li {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+ol.live li b {
+  font-weight: 800;
+}
+ol.live li.you {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* after landing: where you rank, who is nearby, and a turntable of the plane you are looking at */
+.results {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 320px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+}
+.results h2 {
+  font-size: 30px;
+}
+.results h3 {
+  margin-top: 12px;
+}
+.results .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+#retry {
+  flex-basis: 100%;
+}
+.results .row button {
+  flex: 1;
+  width: auto;
+  font-size: 16px;
+}
+.planeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+.planeList button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  text-align: left;
+  font-weight: 500;
+  font-size: 14px;
+  border-width: 1.5px;
+  box-shadow: none;
+}
+.planeList button:hover {
+  background: #fff3e8;
+}
+.planeList .rank {
+  width: 34px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.planeList .who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#rankList {
+  max-height: 300px;
+  overflow-y: auto;
+  position: relative;
+  padding: 2px;
+}
+.planeList .more {
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  border-style: dashed;
+}
+.planeList b {
+  font-weight: 800;
+}
+.planeList li.me button {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.planeList li.viewing button {
+  background: var(--ink);
+  color: var(--paper);
+}
+.inspect {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  padding: 8px;
+}
+#inspectView #deskView {
+  height: 220px;
+}
+#inspectCaption {
+  margin: 8px 4px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+.inspect button {
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .results {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 52%;
+  }
+  .inspect {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+  #inspectView #deskView {
+    height: 150px;
+  }
+}
+.results.short h3,
+.results.short .planeList {
+  display: none;
+}
+.cityBtn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Online/offline: offline play hides everything about other players. */
+.netBadge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  padding: 2px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #c9f2c4;
+}
+.offline .netBadge {
+  background: #e4e1d8;
+  color: #5a5a6e;
+}
+.netBadge[hidden] {
+  display: none;
+}
+.offline .mp {
+  display: none !important;
+}
+
+.replayBtn {
+  width: 100%;
+  margin: 10px 0 0;
+}
+
+.playingList li small {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+#board .playingList li[data-flight] {
+  cursor: pointer;
+}
+.spectating {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+/* The lab: settings and the list of runs, in a dark panel over the dark test hall.
+   Redefining the palette here re-themes everything inside: buttons, sliders, hints. */
+.labHud {
+  --paper: #1b2130;
+  --ink: #e6ebf4;
+  --muted: #95a1b6;
+  --line: #ffffff1c;
+  --track: #2a3346;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 340px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--ink);
+  border-color: #3a465e;
+  box-shadow: 0 6px 0 #05070b;
+}
+.labHud button {
+  border-color: #3a465e;
+  box-shadow: 0 3px 0 #05070b;
+}
+.labHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.labHead h2 {
+  margin: 0;
+  font-size: 30px;
+}
+.labHud > .hint {
+  margin: 4px 0 10px;
+}
+.labRow {
+  display: grid;
+  grid-template-columns: 52px 1fr 60px;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-weight: 700;
+}
+.labRow output {
+  text-align: right;
+}
+.labActions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.labActions .primary {
+  flex: 1;
+  width: auto;
+}
+.labLive {
+  margin: 8px 0 0;
+  font-weight: 800;
+  font-size: 18px;
+}
+.labLive:empty {
+  display: none;
+}
+.labRuns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.run {
+  margin-bottom: 8px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff08;
+}
+.runHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.runDot {
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.runHead b {
+  color: var(--muted);
+  font-size: 13px;
+}
+.runDist {
+  font-size: 20px;
+  font-weight: 800;
+}
+.runTime,
+.runAir {
+  color: var(--muted);
+  font-size: 13px;
+}
+.runChange {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.runChange.up {
+  color: #4fd18b;
+  background: #4fd18b1f;
+}
+.runChange.down {
+  color: #ff8a80;
+  background: #ff6b6b1f;
+}
+.runChart {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 6px 0 4px;
+}
+.runChart line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.runChart polyline {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.runStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px 10px;
+  margin: 0;
+}
+.runStats dt {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.runStats dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.labHud h3 {
+  margin: 14px 0 6px;
+}
+/* Name over value, two columns: design facts and live telemetry. */
+.labGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+.labGrid div {
+  min-width: 0;
+}
+.labGrid dt {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.labGrid dd {
+  margin: 0;
+  font-weight: 800;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.labData {
+  left: auto;
+  right: 12px;
+  width: 300px;
+}
+#labProfile {
+  display: block;
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  background: #0f131b;
+}
+.key {
+  font-weight: 800;
+}
+.key.lift {
+  color: #4fd18b;
+}
+.key.drag {
+  color: #ff6b6b;
+}
+.key.weight {
+  color: #5fa8ff;
+}
+/* Phones: the flight data goes along the bottom instead of beside the settings. */
+@media (max-width: 760px) {
+  .labData {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 40%;
+  }
+  .labHud:not(.labData) {
+    max-height: 50%;
+  }
+}
