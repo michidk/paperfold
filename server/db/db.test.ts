@@ -8,6 +8,7 @@ const plane: Plane = {
   id: 1,
   pid: 'abc',
   name: 'Lucky Moth',
+  hat: null,
   design: { nose: 0.1 },
   paint: true,
   p: [1, 0, 2],
@@ -36,5 +37,28 @@ test('planes survive a restart, and planes.json is imported once', async () => {
     [1, null, { nose: 0.1 }],
     [2, 'abc', { nose: 0.1 }],
   ])
+  again.close()
+})
+
+test('collected and equipped hats survive restarts independently for each player', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'paperfold-items-'))
+  const db = openDb(dir)
+  await db.saveCollection('alice', { owned: ['top-hat'], equipped: null })
+  await db.saveCollection('bob', {
+    owned: ['wizard-hat'],
+    equipped: 'wizard-hat',
+  })
+  await db.saveCollection('alice', {
+    owned: ['top-hat', 'crown'],
+    equipped: 'crown',
+  })
+  db.close()
+  const again = openDb(dir)
+  expect(await again.listCollections()).toEqual([
+    { pid: 'alice', owned: ['top-hat', 'crown'], equipped: 'crown' },
+    { pid: 'bob', owned: ['wizard-hat'], equipped: 'wizard-hat' },
+  ])
+  await again.addPlane({ ...plane, hat: 'crown' })
+  expect((await again.listPlanes())[0].hat).toBe('crown')
   again.close()
 })

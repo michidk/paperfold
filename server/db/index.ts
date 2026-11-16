@@ -5,7 +5,8 @@ import { existsSync, readFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
-import { planes } from './schema'
+import type { Collection } from '../../shared/items'
+import { collections, planes } from './schema'
 
 export type Plane = typeof planes.$inferSelect
 
@@ -22,6 +23,16 @@ export function openDb(dataDir: string) {
       db.select().from(planes).orderBy(planes.id),
     addPlane: async (rec: Plane) => {
       await db.insert(planes).values(rec)
+    },
+    listCollections: async () => db.select().from(collections),
+    saveCollection: async (pid: string, collection: Collection) => {
+      await db
+        .insert(collections)
+        .values({ pid, ...collection })
+        .onConflictDoUpdate({
+          target: collections.pid,
+          set: collection,
+        })
     },
     close: () => sqlite.close(),
   }

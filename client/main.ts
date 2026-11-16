@@ -1,5 +1,16 @@
 import * as THREE from 'three'
 import { DT, PredictedFlight, type ServerState } from '../shared/flight'
+import { flightProgress } from '../shared/flight-progress'
+import { limitAngle, splitFold } from '../shared/fold-edit'
+import {
+  type Collection,
+  collectItems,
+  HATS,
+  type HatId,
+  isHat,
+  PICKUPS,
+  readCollection,
+} from '../shared/items'
 import type {
   Design,
   Flap,
@@ -51,6 +62,7 @@ import {
   worldTime,
   zoneWind,
 } from '../shared/world'
+import { createHat, equipHat, placeHat } from './hats'
 
 // Elements the page always has; a missing one is a bug in index.html, so fail loudly.
 const $ = <T extends Element = HTMLElement>(id: string) => {
@@ -83,11 +95,53 @@ const store = {
   },
 }
 
+const settings = $<HTMLDialogElement>('settings')
+for (const button of document.querySelectorAll('[data-open-settings]'))
+  button.addEventListener('click', () => settings.showModal())
+
+let muted = store.get('paperfold.muted') === 'true'
+const muteSounds = $<HTMLButtonElement>('muteSounds')
+function syncSoundSettings() {
+  muteSounds.setAttribute('aria-pressed', String(muted))
+  muteSounds.textContent = muted ? 'Unmute sounds' : 'Mute sounds'
+  for (const media of document.querySelectorAll<HTMLMediaElement>(
+    'audio, video',
+  ))
+    media.muted = muted
+}
+muteSounds.addEventListener('click', () => {
+  muted = !muted
+  store.set('paperfold.muted', String(muted))
+  syncSoundSettings()
+})
+document.addEventListener(
+  'play',
+  (event) => {
+    if (event.target instanceof HTMLMediaElement) event.target.muted = muted
+  },
+  true,
+)
+syncSoundSettings()
+
+let collection: Collection = { owned: [], equipped: null }
+function offlineCollection(): Collection {
+  try {
+    return readCollection(
+      JSON.parse(store.get('paperfold.collection') ?? 'null'),
+    )
+  } catch {
+    return { owned: [], equipped: null }
+  }
+}
+
 let invertPitch = store.get('paperfold.invertPitch') === 'true'
 const pitchOptions = [
   ...document.querySelectorAll<HTMLInputElement>('[data-invert-pitch]'),
 ]
 function syncPitchOptions() {
+  $('touchSteerHint').textContent = invertPitch
+    ? 'Drag anywhere to steer: up pulls up, sideways banks'
+    : 'Drag anywhere to steer: down pulls up, sideways banks'
   for (const input of pitchOptions) input.checked = invertPitch
   $('steerHint').textContent = invertPitch
     ? 'W/↑ pull up · S/↓ dive · A/D or ←/→ bank'
@@ -789,14 +843,20 @@ function setPlaneGeometry(mesh: PlaneMesh, model: PlaneModel) {
   mesh.geometry = planeGeometry(model)
   edges.geometry.dispose()
   edges.geometry = planeEdges(model)
+  placeHat(mesh)
 }
-function planeMesh(model: PlaneModel, tex?: THREE.Texture | null): PlaneMesh {
+function planeMesh(
+  model: PlaneModel,
+  tex?: THREE.Texture | null,
+  hat: HatId | null = null,
+): PlaneMesh {
   const mesh = new THREE.Mesh(
     planeGeometry(model),
     toon(0xffffff, { map: tex ?? null }),
   )
   if (!tex) mesh.material.color.set(0xfffdf6)
   mesh.add(new THREE.LineSegments(planeEdges(model), lineMat))
+  equipHat(mesh, hat)
   return mesh
 }
 // Shadows: each plane's own triangles flattened onto the ground below it along the sun's direction.
@@ -1368,20 +1428,48 @@ function showAngle(a: number, out: HTMLElement) {
 const inputOf = (e: Event) => e.target as HTMLInputElement
 $('foldAngle').addEventListener(
   'input',
-  (e) => selected && setItem(selected, { angle: +inputOf(e).value }),
-)
-$('foldAngleL').addEventListener(
-  'input',
-  (e) => selected && setItem(selected, { angleL: +inputOf(e).value }),
-)
-$('foldSame').addEventListener(
-  'change',
   (e) =>
     selected &&
     setItem(selected, {
-      angleL: inputOf(e).checked ? undefined : current()?.angle,
+      angle: limitAngle(
+        design,
+        selected.kind,
+        selected.i,
+        'angle',
+        +inputOf(e).value,
+      ),
     }),
 )
+$('foldAngleL').addEventListener(
+  'input',
+  (e) =>
+    selected &&
+    setItem(selected, {
+      angleL: limitAngle(
+        design,
+        selected.kind,
+        selected.i,
+        'angleL',
+        +inputOf(e).value,
+      ),
+    }),
+)
+$('foldSame').addEventListener('change', (e) => {
+  if (!selected) return
+  if (inputOf(e).checked) {
+    setItem(selected, { angleL: undefined })
+    return
+  }
+  const sel = selected
+  const items = list(sel.kind)
+  const pair = splitFold(items[sel.i])
+  const next = [...items.slice(0, sel.i), ...pair, ...items.slice(sel.i + 1)]
+  selected = { ...sel, i: sel.i + (sel.s === -1 ? 1 : 0) }
+  if (!tryDesign(listPatch(sel.kind, next))) {
+    selected = sel
+    renderFolds()
+  }
+})
 $('foldDelete').onclick = deleteSelected
 $('drawKind').addEventListener('click', (e) => {
   const kind = (e.target as HTMLElement).dataset.kind
@@ -1398,19 +1486,12 @@ $('mirrorFolds').onclick = () => {
       tryDesign({ mirror: true }) &&
       notice('New folds go on both halves again.')
     )
-  const split = (o: Item): Item[] =>
-    o.side
-      ? [o]
-      : ([1, -1] as const).map((h) => {
-          const { angleL, ...rest } = o
-          return { ...rest, side: h, angle: angleOn(o, h) }
-        })
   selected = null
   if (
     tryDesign({
       mirror: false,
-      folds: list('fold').flatMap(split),
-      flaps: list('flap').flatMap(split),
+      folds: list('fold').flatMap(splitFold),
+      flaps: list('flap').flatMap(splitFold),
     })
   )
     notice(
@@ -1515,6 +1596,7 @@ $('randomDesign').onclick = () => {
   notice('A random plane! Throw it as it is, or tweak it first.')
 }
 window.addEventListener('keydown', (e) => {
+  if (settings.open) return
   if (mode !== 'workshop' || (e.target as HTMLElement).tagName === 'INPUT')
     return
   if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected()
@@ -1728,7 +1810,7 @@ toolTabs.addEventListener('click', (e) => {
   $('mirrorFolds').hidden = tool === 'paint' // paint has its own mirror
 })
 
-const preview = planeMesh(drawnPlane(design), paintTex) // held on the tower while aiming
+const preview = planeMesh(drawnPlane(design), paintTex, collection.equipped) // held on the tower while aiming
 // While picking the direction: a flat arrow under the plane, pointing where it will fly.
 const aimArrow = (() => {
   const shape = new THREE.Shape(
@@ -1769,7 +1851,7 @@ const desk = {
   }),
   scene: new THREE.Scene(),
   camera: new THREE.PerspectiveCamera(32, 1, 0.01, 10),
-  plane: planeMesh(drawnPlane(design), paintTex),
+  plane: planeMesh(drawnPlane(design), paintTex, collection.equipped),
   yaw: 0.7,
   pitch: 0.42,
   drag: null as Vec2 | null,
@@ -1785,6 +1867,7 @@ const deskView = $<HTMLCanvasElement>('deskView'),
   deskHome = deskView.parentElement as HTMLElement
 // Put a landed plane on the turntable, or null for the workshop design.
 function showOnDesk(rec: PlaneRecord | null) {
+  equipHat(desk.plane, rec ? (rec.hat ?? null) : collection.equipped)
   setPlaneGeometry(desk.plane, drawnPlane(rec ? rec.design : design))
   const tex = rec ? paintTexture(rec) : paintTex
   Object.assign(desk.plane.material, { map: tex, needsUpdate: true })
@@ -1862,7 +1945,7 @@ function addLanded(rec: PlaneRecord) {
   if (landedPlanes.has(rec.id)) return
   const group = new THREE.Group()
   const model = drawnPlane(rec.design),
-    mesh = planeMesh(model, paintTexture(rec))
+    mesh = planeMesh(model, paintTexture(rec), rec.hat ?? null)
   mesh.quaternion.set(...rec.q)
   // Lift it clear of the ground: the server rests planes on the street level and its model may differ
   // slightly from this one (bent flaps, older physics), so the lowest corner could end up underground.
@@ -2179,7 +2262,7 @@ function startReplay() {
   if (!landedRec || recording.length < 2) return
   stopReplay()
   const model = drawnPlane(landedRec.design),
-    mesh = planeMesh(model, paintTexture(landedRec))
+    mesh = planeMesh(model, paintTexture(landedRec), landedRec.hat ?? null)
   scene.add(mesh)
   replay = {
     samples: recording,
@@ -2228,7 +2311,7 @@ function stepReplay(dt: number) {
 function addFlight(info: PlaneInfo) {
   if (flights.has(info.id)) return
   const model = drawnPlane(info.design),
-    mesh = planeMesh(model, paintTexture(info))
+    mesh = planeMesh(model, paintTexture(info), info.hat ?? null)
   mesh.visible = false
   // Flying planes always carry a marker, drawn over buildings, so far-off throws stay easy to spot.
   const label = makeLabel(
@@ -2289,9 +2372,27 @@ function stepLocal(now: number, steer: readonly number[]) {
       sim.n + MAX_CATCHUP,
       Math.floor((now - local.start) / 1000 / DT),
     )
-  local.pred.stepTo(target, steer, (i) =>
-    wsSend({ t: 'steer', pitch: i.p, roll: i.r, at: i.at }),
-  )
+  if (online === false) {
+    while (sim.n < target && !sim.landing) {
+      const before: Vec3 = [...sim.s.p]
+      local.pred.stepTo(sim.n + 1, steer)
+      const collected = collectItems(before, sim.s.p, collection.owned)
+      if (collected.length) {
+        collection = {
+          ...collection,
+          owned: [...collection.owned, ...collected],
+        }
+        store.set('paperfold.collection', JSON.stringify(collection))
+        renderCollection()
+        notice(
+          `Collected ${collected.map((id) => HATS.find((head) => head.id === id)?.name ?? id).join(', ')}! Equip it in the workshop.`,
+        )
+      }
+    }
+  } else
+    local.pred.stepTo(target, steer, (i) =>
+      wsSend({ t: 'steer', pitch: i.p, roll: i.r, at: i.at }),
+    )
   if (now - local.lastProgress > 50) {
     local.lastProgress = now
     wsSend({ t: 'progress', at: sim.n })
@@ -2510,6 +2611,7 @@ $('board').addEventListener('click', (e) => {
 
 // ---------- network ----------
 interface PlaneInfo {
+  hat?: HatId | null
   id: number
   name: string
   design: Design
@@ -2532,6 +2634,7 @@ interface Player {
   you: boolean
 }
 type ServerMessage =
+  | ({ t: 'collection'; collected: HatId[] } & Collection)
   | { t: 'init'; landed: PlaneRecord[]; flights: PlaneInfo[]; time: number }
   | { t: 'players'; list: Player[] }
   | { t: 'mine'; id: number; design: Design; state: State; t0: number }
@@ -2539,6 +2642,7 @@ type ServerMessage =
   | { t: 'flights'; f: (ServerState & { id: number })[] }
   | { t: 'landed'; plane: PlaneRecord; ignored?: boolean }
 type ClientMessage =
+  | { t: 'equip'; hat: HatId | null }
   | { t: 'hello'; name: string; pid: string }
   | {
       t: 'throw'
@@ -2612,6 +2716,8 @@ function connect() {
     wsSend({ t: 'status', status: STATUS[mode] })
   }
   ws.onclose = () => {
+    collection = offlineCollection()
+    renderCollection()
     setOnline(false)
     setTimeout(connect, 5000)
   }
@@ -2630,6 +2736,13 @@ function connect() {
       }
       windClock = m.time - performance.now() / 1000 // the server's world time, for drawing the wind
       renderBoard()
+    } else if (m.t === 'collection') {
+      collection = readCollection(m)
+      renderCollection()
+      if (m.collected.length)
+        notice(
+          `Collected ${m.collected.map((id) => HATS.find((head) => head.id === id)?.name ?? id).join(', ')}! Equip it in the workshop.`,
+        )
     } else if (m.t === 'players') renderPlayers(m.list)
     else if (m.t === 'mine') {
       myFlightId = m.id
@@ -2721,7 +2834,13 @@ function throwOffline() {
     3 + power * 11,
     [jitter() * 2, jitter() * 2, jitter() * 2],
   )
-  addFlight({ id, name, design: d, paint: paintCanvas.toDataURL('image/png') })
+  addFlight({
+    id,
+    name,
+    design: d,
+    paint: paintCanvas.toDataURL('image/png'),
+    hat: collection.equipped,
+  })
   myFlightId = id
   startLocal({ design: d, state, t0: windNow() })
   setMode('flying')
@@ -2742,6 +2861,7 @@ function landOffline() {
     name,
     design: f.info.design,
     paint: f.info.paint,
+    hat: f.info.hat,
     p: p.map((v) => Math.round(v * 1000) / 1000) as Vec3,
     q,
     dist: Math.round(Math.hypot(p[0], p[2])),
@@ -2770,8 +2890,80 @@ function landOffline() {
 let players: Player[] = [],
   followId: number | null = null,
   followSnap = true
+let progressTarget = 0
+let progressDistance = -1
+let progressEntries: { best: number; element: HTMLElement }[] = []
+function renderFlightProgress(distance = 0) {
+  const result = flightProgress(players, 0)
+  progressTarget = result.leader?.best ?? 0
+  progressDistance = -1
+  $('progressLeader').textContent = result.leader
+    ? `#1 ${result.leader.you ? 'You' : result.leader.name} · ${result.leader.best} m`
+    : 'Set the first high score'
+  $('progressLeader').title = $('progressLeader').textContent ?? ''
+  $('distanceMarkers').innerHTML = result.scores
+    .map(
+      (p) =>
+        `<i style="left:${p.fraction * 100}%" title="${escapeHtml(p.name)} · ${p.best} m"></i>`,
+    )
+    .join('')
+  $('progressScores').innerHTML = result.scores
+    .map(
+      (p) =>
+        `<li class="${p.you ? 'you' : ''}" title="${escapeHtml(p.name)} · ${p.best} m"><span>#${p.rank} ${escapeHtml(p.you ? 'You' : p.name)}</span><b>${p.best} m</b></li>`,
+    )
+    .join('')
+  progressEntries = [...$('progressScores').children].flatMap((element, i) =>
+    element instanceof HTMLElement
+      ? [{ best: result.scores[i].best, element }]
+      : [],
+  )
+  $('distanceProgress').setAttribute(
+    'aria-valuemax',
+    String(progressTarget || 1),
+  )
+  updateFlightProgress(distance)
+}
+function updateFlightProgress(distance: number) {
+  const fraction = progressTarget
+    ? Math.min(1, Math.max(0, distance / progressTarget))
+    : 0
+  $('distanceFill').style.transform = `scaleX(${fraction})`
+  const metres = Math.floor(distance)
+  if (metres === progressDistance) return
+  progressDistance = metres
+  const result = flightProgress(players, metres)
+  $('progressDistance').textContent = `You · ${metres} m`
+  $('distanceProgress').setAttribute(
+    'aria-valuenow',
+    String(Math.min(progressTarget || 1, metres)),
+  )
+  $('distanceProgress').setAttribute(
+    'aria-valuetext',
+    `${metres} metres${progressTarget ? `, first place ${progressTarget} metres` : ', no high scores yet'}`,
+  )
+  $('progressStatus').textContent = !result.leader
+    ? 'Your landing will set the score to beat'
+    : result.beyond > 0
+      ? `${Math.floor(result.beyond)} m past first place!`
+      : result.next
+        ? `Next: ${result.next.you ? 'your best' : result.next.name} · ${Math.ceil(result.next.best - metres)} m to go`
+        : ''
+  for (const { best, element } of progressEntries)
+    element.classList.toggle('passed', metres > best)
+}
+
 function renderPlayers(list = players) {
+  const scoresChanged =
+    list.length !== players.length ||
+    list.some(
+      (p, i) =>
+        p.name !== players[i]?.name ||
+        p.best !== players[i]?.best ||
+        p.you !== players[i]?.you,
+    )
   players = list
+  if (scoresChanged) renderFlightProgress(Math.max(0, progressDistance))
   for (const el of document.querySelectorAll('.playingCount'))
     el.textContent = String(list.length)
   const html = list
@@ -3152,7 +3344,7 @@ const lab = (() => {
     }
     runs.push(run)
     if (plane) disposePlane(plane)
-    plane = planeMesh(drawnPlane(design), paintTex)
+    plane = planeMesh(drawnPlane(design), paintTex, collection.equipped)
     shadow = addShadow(plane)
     room.add(plane)
     flying = { run, t: 0, i: 0 }
@@ -3310,7 +3502,7 @@ const lab = (() => {
   function ready() {
     if (flying) return
     if (plane) disposePlane(plane)
-    plane = planeMesh(drawnPlane(design), paintTex)
+    plane = planeMesh(drawnPlane(design), paintTex, collection.equipped)
     shadow = addShadow(plane)
     plane.position.set(0, TRIAL.height, 0)
     plane.quaternion.set(
@@ -3385,6 +3577,8 @@ type Mode = keyof typeof PANELS
 let mode: Mode = 'start'
 function setMode(m: Mode) {
   mode = m
+  $('flightProgress').hidden = m !== 'flying'
+  if (m === 'flying') renderFlightProgress()
   wsSend({ t: 'status', status: STATUS[m] })
   for (const [k, id] of Object.entries(PANELS)) $(id).hidden = k !== m
   $('board').hidden =
@@ -3554,7 +3748,9 @@ $('copyDesign').onclick = () => {
 // ---------- input ----------
 const keys = new Set<string>()
 window.addEventListener('keydown', (e) => {
+  if (settings.open) return
   const t = e.target as HTMLInputElement
+  if (t.closest('.progressScoreScroll')) return
   if (t.tagName === 'INPUT' && t.type !== 'range') return
   keys.add(e.code)
   if (
@@ -3885,11 +4081,15 @@ function update(dt: number, now: number) {
       $('hudSpeed').textContent = `${f.v.length().toFixed(1)} m/s`
       $('hudAlt').textContent = `↑ ${p.y.toFixed(1)} m`
       $('hudDist').textContent = `→ ${Math.hypot(p.x, p.z).toFixed(0)} m`
+      updateFlightProgress(Math.hypot(p.x, p.z))
       if (local)
         $('hudTime').textContent = `${(local.pred.sim.n * DT).toFixed(0)} s`
-      $('thermal').hidden = windAt([p.x, p.y, p.z])[1] < 0.4
+      $('thermal').classList.toggle(
+        'inactive',
+        windAt([p.x, p.y, p.z])[1] < 0.4,
+      )
       const g = gustAt([p.x, p.y, p.z], windNow())
-      $('windy').hidden = Math.hypot(g[0], g[2]) < 1
+      $('windy').classList.toggle('inactive', Math.hypot(g[0], g[2]) < 1)
     }
   } else if (mode === 'replay') {
     if (!stepReplay(dt)) endReplay()
@@ -4004,6 +4204,55 @@ function updateDither(dt: number) {
   if (changed) for (const sync of ditherSync) sync()
 }
 
+const itemPickups = PICKUPS.map((pickup) => {
+  const group = new THREE.Group()
+  group.position.set(...pickup.p)
+  const hat = createHat(pickup.hat)
+  hat.scale.setScalar(1.8)
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(pickup.radius, 0.07, 8, 48),
+    new THREE.MeshBasicMaterial({ color: 0xffd166 }),
+  )
+  ring.rotation.y = Math.atan2(pickup.p[0], pickup.p[2])
+  const label = makeLabel(
+    HATS.find((item) => item.id === pickup.hat)?.name ?? pickup.hat,
+    new THREE.Color(0xffd166),
+  )
+  label.position.y = 3.2
+  label.scale.multiplyScalar(1.2)
+  group.add(hat, ring, label)
+  scene.add(group)
+  return { ...pickup, group, visual: hat }
+})
+function renderCollection() {
+  $('hatCount').textContent = `${collection.owned.length} / ${HATS.length}`
+  $('hatChoices').innerHTML =
+    `<button type="button" data-hat="none" aria-pressed="${collection.equipped === null}">No hat</button>` +
+    HATS.map((hat) => {
+      const owned = collection.owned.includes(hat.id)
+      return `<button type="button" data-hat="${hat.id}" aria-pressed="${collection.equipped === hat.id}" ${owned ? '' : 'disabled'}><b>${hat.name}</b><small>${owned ? (collection.equipped === hat.id ? 'Equipped' : 'Equip') : hat.hint}</small></button>`
+    }).join('')
+  for (const item of itemPickups)
+    item.group.visible = !collection.owned.includes(item.hat)
+  equipHat(preview, collection.equipped)
+  if (mode !== 'landed') equipHat(desk.plane, collection.equipped)
+}
+$('hatChoices').addEventListener('click', (event) => {
+  if (!(event.target instanceof Element)) return
+  const id =
+    event.target.closest<HTMLButtonElement>('button[data-hat]')?.dataset.hat
+  const hat = id === 'none' ? null : isHat(id) ? id : undefined
+  if (hat === undefined || (hat !== null && !collection.owned.includes(hat)))
+    return
+  if (online) wsSend({ t: 'equip', hat })
+  else if (online === false) {
+    collection = { ...collection, equipped: hat }
+    store.set('paperfold.collection', JSON.stringify(collection))
+    renderCollection()
+  }
+})
+renderCollection()
+
 const clock = new THREE.Clock()
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1)
@@ -4016,6 +4265,7 @@ renderer.setAnimationLoop(() => {
     resize()
   update(dt, performance.now())
   updateDither(dt)
+  for (const item of itemPickups) item.visual.rotation.y += dt * 0.6
   if (mode === 'workshop' || mode === 'landed') renderDesk(dt)
   renderer.render(mode === 'lab' ? lab.room : scene, camera) // full screen in game, the follow cam in the workshop
 })

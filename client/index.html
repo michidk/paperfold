@@ -20,7 +20,17 @@
       <button id="reroll" type="button" aria-label="Pick another random name" title="Pick another random name">🎲</button>
     </div>
     <button type="button" id="go" class="primary">Start folding</button>
+    <button type="button" class="settingsOpen" data-open-settings>Settings</button>
   </div>
+
+  <dialog id="settings" aria-labelledby="settingsTitle">
+    <form method="dialog">
+      <h2 id="settingsTitle">Settings</h2>
+      <label class="check"><input type="checkbox" data-invert-pitch> Invert vertical steering</label>
+      <button type="button" id="muteSounds" aria-pressed="false">Mute sounds</button>
+      <button type="submit" class="primary">Done</button>
+    </form>
+  </dialog>
 
   <main id="workshop" hidden>
     <header class="wsHeader">
@@ -78,7 +88,12 @@
         <canvas id="deskView" aria-label="3D preview of your plane, drag to turn it"></canvas>
         <p class="hint">Drag to turn it</p>
       </div>
-      <label class="check chip"><input type="checkbox" data-invert-pitch> Invert vertical steering</label>
+      <section class="card hatCollection" aria-labelledby="hatCollectionTitle">
+        <h3 id="hatCollectionTitle">Collected hats <span id="hatCount">0 / 3</span></h3>
+        <p class="hint">Fly through glowing hats in the city to collect them. Wear one, or fly without.</p>
+        <div id="hatChoices" class="hatChoices"></div>
+      </section>
+      <button type="button" data-open-settings>Settings</button>
       <button type="button" id="toRoof" class="primary">Throw it ✈</button>
       <button type="button" id="toLab">Test in the lab</button>
       <div class="card liveCard">
@@ -105,12 +120,21 @@
 
   <div id="flightHud" class="hud top" hidden>
     <div class="readout"><span id="hudSpeed"></span><span id="hudAlt"></span><span id="hudDist"></span><span id="hudTime"></span></div>
-    <div id="thermal" hidden>Updraft!</div>
-    <div id="windy" hidden>Windy!</div>
-    <p class="hint touchOnly">Drag anywhere to steer: down pulls up, sideways banks</p>
+    <div class="flightConditions"><span id="thermal" class="inactive">Updraft!</span><span id="windy" class="inactive">Windy!</span></div>
+    <p class="hint touchOnly" id="touchSteerHint">Drag anywhere to steer: down pulls up, sideways banks</p>
     <p class="hint" id="steerHint">S/↓ pull up · W/↑ dive · A/D or ←/→ bank</p>
-    <label class="check"><input type="checkbox" data-invert-pitch> Invert vertical steering</label>
   </div>
+
+  <aside id="flightProgress" class="hud flightProgress" aria-label="Flight distance against player high scores" hidden>
+    <div class="progressHeading"><b id="progressDistance">You · 0 m</b><span id="progressLeader"></span></div>
+    <div id="distanceProgress" class="distanceProgress" role="progressbar" aria-label="Distance toward first place" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="distanceFill" class="distanceFill"></div>
+      <div id="distanceMarkers" class="distanceMarkers"></div>
+    </div>
+    <div id="progressStatus" class="progressStatus"></div>
+    <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll the score list. -->
+    <section class="progressScoreScroll" aria-label="Player high scores" tabindex="0"><ol id="progressScores" class="progressScores"></ol></section>
+  </aside>
 
   <div id="replayHud" class="hud top" hidden>
     <div class="readout"><b>Replay</b><span id="replayTime"></span></div>

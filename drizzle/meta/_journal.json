@@ -8,6 +8,13 @@
       "when": 1794676510883,
       "tag": "0000_planes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794834458101,
+      "tag": "0001_collected_hats",
+      "breakpoints": true
     }
   ]
 }

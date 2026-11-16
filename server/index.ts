@@ -3,6 +3,13 @@ import { join } from 'node:path'
 import type { ServerWebSocket } from 'bun'
 import { DT, Flight, type Input } from '../shared/flight'
 import {
+  type Collection,
+  collectItems,
+  type HatId,
+  isHat,
+  readCollection,
+} from '../shared/items'
+import {
   D2R,
   type Design,
   launchState,
@@ -36,6 +43,7 @@ interface LiveFlight {
   name: string
   design: Design
   paint: boolean
+  hat: HatId | null
   sim: Flight
   start: number
   clientStep: number
@@ -77,6 +85,29 @@ const recordBest = (rec: Landed) =>
   bestByPid.set(rec.pid, Math.max(bestByPid.get(rec.pid) ?? 0, rec.dist))
 landed.forEach(recordBest)
 const sockets = new Set<Socket>()
+const collections = new Map<string, Collection>(
+  (await db.listCollections()).map((row) => [row.pid, readCollection(row)]),
+)
+const collectionFor = (pid: string): Collection =>
+  collections.get(pid) ?? { owned: [], equipped: null }
+function sendCollection(pid: string, collected: HatId[] = []) {
+  for (const socket of sockets)
+    if (socket.data.pid === pid)
+      socket.send(
+        JSON.stringify({ t: 'collection', ...collectionFor(pid), collected }),
+      )
+}
+function saveCollection(
+  pid: string,
+  collection: Collection,
+  collected: HatId[] = [],
+) {
+  collections.set(pid, collection)
+  db.saveCollection(pid, collection).catch((error) =>
+    console.error('could not save collected items:', error),
+  )
+  sendCollection(pid, collected)
+}
 
 // Live board: everyone connected now, merged per player (several tabs count once), sent with a "you" flag.
 function sendPlayers() {
@@ -133,6 +164,7 @@ const pub = (f: LiveFlight) => ({
   name: f.name,
   design: f.design,
   paint: f.paint,
+  hat: f.hat,
 })
 const send = (msg: object) => server.publish('all', JSON.stringify(msg))
 
@@ -169,6 +201,7 @@ function throwPlane(ws: Socket, msg: ClientMessage) {
     name: ws.data.name,
     design,
     paint,
+    hat: collectionFor(ws.data.pid).equipped,
     sim: new Flight(design, s, 0, t0),
     start: performance.now(),
     clientStep: 0,
@@ -233,7 +266,16 @@ function tick() {
         f.inputs.shift()
         sim.setSteer(i.p, i.r)
       }
+      const before: Vec3 = [...sim.s.p]
       sim.advance()
+      const collection = collectionFor(f.ws.data.pid)
+      const collected = collectItems(before, sim.s.p, collection.owned)
+      if (collected.length)
+        saveCollection(
+          f.ws.data.pid,
+          { ...collection, owned: [...collection.owned, ...collected] },
+          collected,
+        )
     }
     const s = sim.s
     if (sim.landing) {
@@ -341,6 +383,7 @@ const server = Bun.serve({
         return
       }
       if (msg.t === 'hello') {
+        if (ws.data.flight) return
         ws.data.name =
           String(msg.name ?? '')
             .replace(/[^\p{L}\p{N} _.-]/gu, '')
@@ -348,7 +391,15 @@ const server = Bun.serve({
             .slice(0, 20) || 'Anonymous'
         if (typeof msg.pid === 'string' && /^[a-z0-9]{12,32}$/.test(msg.pid))
           ws.data.pid = msg.pid
+        sendCollection(ws.data.pid)
         sendPlayers()
+      } else if (msg.t === 'equip') {
+        const collection = collectionFor(ws.data.pid)
+        if (
+          msg.hat === null ||
+          (isHat(msg.hat) && collection.owned.includes(msg.hat))
+        )
+          saveCollection(ws.data.pid, { ...collection, equipped: msg.hat })
       } else if (msg.t === 'status') {
         const status = STATUSES.find((s) => s === msg.status)
         if (status && status !== ws.data.status) {
