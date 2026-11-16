@@ -5,3 +5,9 @@ dist
 data
 analysis
 *.md
+
+.codex
+.claude
+.serena
+.agents
+.gitnexus

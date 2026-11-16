@@ -5,19 +5,19 @@ export const HATS = [
     id: 'top-hat',
     name: 'Top hat',
     color: 0x343447,
-    hint: 'East of the tower, just below the roof',
+    hint: 'Tucked behind the northern buildings',
   },
   {
     id: 'wizard-hat',
     name: 'Wizard hat',
     color: 0x8873c7,
-    hint: 'Follow the eastern street north',
+    hint: 'Around the far side of the western block',
   },
   {
     id: 'crown',
     name: 'Crown',
     color: 0xffd166,
-    hint: 'West of the tower, over the street',
+    hint: 'Hidden beyond the southeastern rooftops',
   },
 ] as const
 export type HatId = (typeof HATS)[number]['id']
@@ -26,9 +26,9 @@ export interface Collection {
   equipped: HatId | null
 }
 export const PICKUPS: readonly { hat: HatId; p: Vec3; radius: number }[] = [
-  { hat: 'top-hat', p: [24, 46, 0], radius: 2.5 },
-  { hat: 'wizard-hat', p: [24, 40, -40], radius: 2.5 },
-  { hat: 'crown', p: [-24, 42, 18], radius: 2.5 },
+  { hat: 'top-hat', p: [-9, 28, -72], radius: 2.5 },
+  { hat: 'wizard-hat', p: [-72, 18, -39], radius: 2.5 },
+  { hat: 'crown', p: [43, 20, 72], radius: 2.5 },
 ]
 export function isHat(value: unknown): value is HatId {
   return HATS.some((hat) => hat.id === value)

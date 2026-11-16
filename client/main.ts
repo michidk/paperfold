@@ -3599,6 +3599,7 @@ $('go').onclick = () => {
   setMode('workshop')
 }
 $('toRoof').onclick = $('retry').onclick = () => {
+  yaw = Math.random() * Math.PI * 2
   aimStage = 0
   aimT = 0
   setMode('aim')
@@ -4196,18 +4197,7 @@ const itemPickups = PICKUPS.map((pickup) => {
   group.position.set(...pickup.p)
   const hat = createHat(pickup.hat)
   hat.scale.setScalar(1.8)
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(pickup.radius, 0.07, 8, 48),
-    new THREE.MeshBasicMaterial({ color: 0xffd166 }),
-  )
-  ring.rotation.y = Math.atan2(pickup.p[0], pickup.p[2])
-  const label = makeLabel(
-    HATS.find((item) => item.id === pickup.hat)?.name ?? pickup.hat,
-    new THREE.Color(0xffd166),
-  )
-  label.position.y = 3.2
-  label.scale.multiplyScalar(1.2)
-  group.add(hat, ring, label)
+  group.add(hat)
   scene.add(group)
   return { ...pickup, group, visual: hat }
 })

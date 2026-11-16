@@ -38,8 +38,8 @@ jobs:
       - name: Build client
         run: bun run build
         env:
-          # The game server's URL, e.g. https://paperfold.example.com. Unset: the site plays offline only.
-          PAPERFOLD_SERVER: ${{ vars.PAPERFOLD_SERVER }}
+          # Override for a different deployment; production uses the cluster ingress.
+          PAPERFOLD_SERVER: ${{ vars.PAPERFOLD_SERVER || 'https://paperfold.k8s.lohr.dev' }}
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 

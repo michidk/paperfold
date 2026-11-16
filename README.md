@@ -85,7 +85,13 @@ Pages, to the server's `https://` address.
 ### Docker
 
 Every push to `main` publishes an image to
-`ghcr.io/michidk/paperfold`. It runs the server and serves the client.
+`ghcr.io/michidk/paperfold` for AMD64 and ARM64. Before publishing, CI runs
+`scripts/smoke-image.sh` against the image to verify HTTP, cross-origin
+WebSockets, database migrations and persistence after a container restart.
+The server runs as a non-root user with a read-only root filesystem.
+The shared `michidk/workflows` container workflow builds both platforms natively
+and publishes a `sha-<short commit>` tag. Its publish log records the
+immutable digest.
 Keep `/data` on a volume:
 
 ```sh
@@ -97,8 +103,16 @@ The container reports its health at `/healthz`.
 ### GitHub Pages
 
 The `Deploy client to GitHub Pages` workflow publishes the client on every
-push to `main`. Set the repository variable `PAPERFOLD_SERVER` to point it
-at a game server. Without one, the Pages site plays offline.
+push to `main`. It connects to `https://paperfold.k8s.lohr.dev` for multiplayer
+and plane paint. The repository variable `PAPERFOLD_SERVER` can override that
+address. If the server is unreachable, the game falls back to offline play.
+
+The cluster deployment lives in the `michidk-cluster/k8s` repository under
+`apps/paperfold/`. Promote a published image by updating its tagged digest
+there, validate with `just verify`, and merge through the normal review flow.
+The infrastructure repository deploys changes after they reach `main`.
+The initial deployment uses one server with persistent `/data` storage,
+public HTTPS and WebSocket ingress at `paperfold.k8s.lohr.dev`.
 
 ## License
 
