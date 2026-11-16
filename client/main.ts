@@ -192,7 +192,6 @@ const toon = (
   color: number,
   extra: THREE.MeshToonMaterialParameters & { flatShading?: boolean } = {},
 ) => new THREE.MeshToonMaterial({ color, gradientMap, ...extra })
-const lineMat = new THREE.LineBasicMaterial({ color: 0x2b2b3a })
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.5))
 const sun = new THREE.DirectionalLight(0xffffff, 2.2)
 sun.position.set(120, 200, 80)
@@ -829,20 +828,10 @@ function planeGeometry(model: PlaneModel) {
   g.computeVertexNormals()
   return g
 }
-function planeEdges(model: PlaneModel) {
-  const g = new THREE.BufferGeometry()
-  g.setAttribute('position', new THREE.Float32BufferAttribute(model.pos, 3))
-  const edges = new THREE.EdgesGeometry(g, 15) // from one face only, or every crease between the faces would show
-  g.dispose()
-  return edges
-}
 type PlaneMesh = THREE.Mesh<THREE.BufferGeometry, THREE.MeshToonMaterial>
 function setPlaneGeometry(mesh: PlaneMesh, model: PlaneModel) {
-  const edges = mesh.children[0] as THREE.LineSegments
   mesh.geometry.dispose()
   mesh.geometry = planeGeometry(model)
-  edges.geometry.dispose()
-  edges.geometry = planeEdges(model)
   placeHat(mesh)
 }
 function planeMesh(
@@ -855,7 +844,6 @@ function planeMesh(
     toon(0xffffff, { map: tex ?? null }),
   )
   if (!tex) mesh.material.color.set(0xfffdf6)
-  mesh.add(new THREE.LineSegments(planeEdges(model), lineMat))
   equipHat(mesh, hat)
   return mesh
 }
@@ -913,8 +901,7 @@ function disposePlane(obj: THREE.Object3D) {
     const m = o as Partial<THREE.Mesh<THREE.BufferGeometry, THREE.Material>>
     m.geometry?.dispose()
     if (o instanceof THREE.Sprite) o.material.map?.dispose() // name tags own their texture; plane paint is shared
-    if (m.material !== lineMat && m.material !== shadowMat)
-      m.material?.dispose?.()
+    if (m.material !== shadowMat) m.material?.dispose?.()
   })
   obj.removeFromParent()
 }
