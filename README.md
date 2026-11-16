@@ -75,10 +75,20 @@ bun run verify       # lint, types, tests, dead code and build
 | `PORT` | server | `3000` | Port to listen on |
 | `DATA_DIR` | server | `./data` | Where the database and plane paint are kept |
 | `PAPERFOLD_SERVER` | client build | empty | Game server URL for a client hosted elsewhere |
+| `TALO_ACCESS_KEY` | server | empty | [Talo](https://trytalo.com) access key; enables the Talo leaderboard |
+| `TALO_LEADERBOARD` | server | `distance` | Internal name of the Talo leaderboard |
+| `TALO_URL` | server | `https://api.trytalo.com` | Talo API, for a self-hosted Talo |
 
 With `PAPERFOLD_SERVER` empty, the client talks to the server that served
 it. Set it when hosting the client separately, for example on GitHub
 Pages, to the server's `https://` address.
+
+With `TALO_ACCESS_KEY` set, the server sends every plane that stays in
+the city to the Talo leaderboard, with the player's browser id as a
+`paperfold` alias and the name, plane id and landing spot as props. The
+key needs the `read:players`, `write:players` and `write:leaderboards`
+scopes, and stays on the server. Make the leaderboard unique per player
+to keep only each player's best throw.
 
 ## Deployment
 

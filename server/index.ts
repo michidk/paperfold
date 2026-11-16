@@ -12,12 +12,20 @@ import {
 } from '../shared/plane'
 import { spawnPoint, surfaceAt, worldTime } from '../shared/world'
 import { openDb, type Plane } from './db'
+import { openTalo } from './talo'
 
 const ROOT = join(import.meta.dir, '..')
 const DATA = process.env.DATA_DIR ?? join(ROOT, 'data')
 const PAINT = join(DATA, 'paint')
 mkdirSync(PAINT, { recursive: true })
 const db = openDb(DATA)
+const talo = process.env.TALO_ACCESS_KEY
+  ? openTalo({
+      key: process.env.TALO_ACCESS_KEY,
+      leaderboard: process.env.TALO_LEADERBOARD || 'distance',
+      url: process.env.TALO_URL || undefined,
+    })
+  : null
 
 const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const TICK_MS = 50,
@@ -204,6 +212,13 @@ function land(f: LiveFlight, surfaceY: number, where: string) {
     db.addPlane(rec).catch((e) =>
       console.error(`could not save plane ${rec.id}:`, e),
     )
+    talo
+      ?.submit(f.ws.data.pid, rec.dist, {
+        name: rec.name,
+        plane: String(rec.id),
+        where: rec.where,
+      })
+      .catch((e) => console.error(`talo: plane ${rec.id}:`, e))
   }
   flights.delete(f.id)
   if (f.ws.data.flight === f) f.ws.data.flight = null
