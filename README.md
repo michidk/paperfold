@@ -1,9 +1,16 @@
 # Paperfold
 
+[![Checks](https://github.com/michidk/paperfold/actions/workflows/ci.yml/badge.svg)](https://github.com/michidk/paperfold/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Fold a paper plane, paint it, throw it off the tower and leave it in the
 city for everyone to find.
 
 Play it at <https://michidk.github.io/paperfold/>.
+
+[Features](#features) · [How it works](#how-it-works) ·
+[Development](#development) · [Configuration](#configuration) ·
+[Deployment](#deployment)
 
 ## Features
 
@@ -84,15 +91,12 @@ Pages, to the server's `https://` address.
 
 ### Docker
 
-Every push to `main` publishes an image to
-`ghcr.io/michidk/paperfold` for AMD64 and ARM64. Before publishing, CI runs
-`scripts/smoke-image.sh` against the image to verify HTTP, cross-origin
-WebSockets, database migrations and persistence after a container restart.
-The server runs as a non-root user with a read-only root filesystem.
-The shared `michidk/workflows` container workflow builds both platforms natively
-and publishes a `sha-<short commit>` tag. Its publish log records the
-immutable digest.
-Keep `/data` on a volume:
+Every push to `main` publishes `ghcr.io/michidk/paperfold` for AMD64 and
+ARM64, tagged `latest` and `sha-<short commit>`; the publish log records the
+immutable digest. Before publishing, CI runs `scripts/smoke-image.sh` against
+the image to verify HTTP, cross-origin WebSockets, database migrations and
+persistence after a container restart. The server runs as a non-root user and
+supports a read-only root filesystem. Keep `/data` on a volume:
 
 ```sh
 docker run -d -p 3000:3000 -v paperfold-data:/data ghcr.io/michidk/paperfold:latest
